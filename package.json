@@ -1,0 +1,43 @@
+{
+  "name": "preva-cli",
+  "version": "1.0.0",
+  "description": "Same Git, just with a preview.",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "preva": "bin/preva.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/**/*.test.js"
+  },
+  "keywords": [
+    "git",
+    "git-add",
+    "git-push",
+    "preview",
+    "staging",
+    "guard",
+    "checklist",
+    "developer-tools",
+    "zero-dependency"
+  ],
+  "author": "gozajpeg",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gozajpeg/preva-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/gozajpeg/preva-cli/issues"
+  },
+  "homepage": "https://github.com/gozajpeg/preva-cli#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
