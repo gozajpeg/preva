@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/preva.webp" alt="preva logo" width="380" />
+  <img src="https://raw.githubusercontent.com/gozajpeg/preva/main/assets/preva.webp" alt="preva logo" width="380" />
   <h1>preva</h1>
   <p><strong>Same Git, just with a preview.</strong></p>
   <p>Preva doesn't change how Git works. It just shows you what's happening before you stage, commit, or push, so you can catch mistakes before they leave your machine.</p>
@@ -38,7 +38,7 @@ preva add .
 
 `preva` scans your repository changes and displays an interactive checklist:
 
-![preva git add preview](assets/add.webp)
+![preva git add preview](https://raw.githubusercontent.com/gozajpeg/preva/main/assets/add.webp)
 
 - **Normal changes** start pre-checked so common staging stays fast.
 - **Sensitive files** (patterns like `*.key`, `*.pem`, `.env*`, `credentials.json`, `*.p12`) start **unchecked** by default.
@@ -66,7 +66,7 @@ preva commit
 
 `preva` reviews your staged changes, lets you select standard commit types, prompts for an optional scope, and previews the formatted message:
 
-![preva git commit preview](assets/commit.webp)
+![preva git commit preview](https://raw.githubusercontent.com/gozajpeg/preva/main/assets/commit.webp)
 
 - **Standard Types**: Pre-fills the 11 standard types from Conventional Commits v1.0.0 and `@commitlint/config-conventional`.
 - **Automatic Formatting**: Normalizes scopes to lowercase and auto-strips trailing periods so commits pass CI linters without friction.
@@ -88,7 +88,7 @@ preva push
 
 `preva` inspects the unpushed commits and presents a clear summary:
 
-![preva git push preview](assets/push.webp)
+![preva git push preview](https://raw.githubusercontent.com/gozajpeg/preva/main/assets/push.webp)
 
 - If flagged files are detected, the confirmation prompt defaults to **No (`[y/N]`)**.
 - Pressing **n**, **Enter**, or **Ctrl+C** cleanly cancels the push without sending anything to the remote.

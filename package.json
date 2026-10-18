@@ -1,6 +1,6 @@
 {
   "name": "preva-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Same Git, just with a preview.",
   "type": "module",
   "main": "src/index.js",
@@ -31,12 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gozajpeg/preva-cli"
+    "url": "git+https://github.com/gozajpeg/preva.git"
   },
   "bugs": {
-    "url": "https://github.com/gozajpeg/preva-cli/issues"
+    "url": "https://github.com/gozajpeg/preva/issues"
   },
-  "homepage": "https://github.com/gozajpeg/preva-cli#readme",
+  "homepage": "https://github.com/gozajpeg/preva#readme",
   "engines": {
     "node": ">=18.0.0"
   }
