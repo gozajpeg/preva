@@ -1,6 +1,6 @@
 {
   "name": "preva-cli",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Same Git, just with a preview.",
   "type": "module",
   "main": "src/index.js",

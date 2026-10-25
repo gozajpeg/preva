@@ -9,6 +9,53 @@ export function isInteractive() {
 }
 
 /**
+ * Strip ANSI escape codes to measure visible string length.
+ */
+export function stripAnsi(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+}
+
+/**
+ * Safely truncate a string containing ANSI escape codes without breaking escape sequences.
+ * Prevents line wrapping in terminal prompts which causes row-count miscalculations and redraw duplication.
+ */
+export function truncateAnsi(str, maxCols) {
+  if (typeof str !== 'string') return '';
+  const sanitized = str.replace(/\r/g, '').replace(/\n/g, ' ');
+  if (!maxCols || maxCols <= 0) return sanitized;
+  const visualLen = stripAnsi(sanitized).length;
+  if (visualLen <= maxCols) return sanitized;
+
+  const ellipsis = '...';
+  const limit = Math.max(0, maxCols - ellipsis.length);
+  const hasAnsi = sanitized.includes('\x1b[');
+  let result = '';
+  let count = 0;
+  const ansiRegex = /^\x1b\[[0-?]*[ -/]*[@-~]/;
+
+  for (let i = 0; i < sanitized.length; ) {
+    const match = sanitized.slice(i).match(ansiRegex);
+    if (match) {
+      result += match[0];
+      i += match[0].length;
+      continue;
+    }
+
+    if (count >= limit) {
+      result += hasAnsi ? ellipsis + '\x1b[0m' : ellipsis;
+      break;
+    }
+
+    result += sanitized[i];
+    count++;
+    i++;
+  }
+
+  return result;
+}
+
+/**
  * Interactive Multi-Select Checkbox Prompt using native Node readline & raw mode.
  */
 export function checkboxList({ message, choices, pageSize = 15 }) {
@@ -54,9 +101,12 @@ export function checkboxList({ message, choices, pageSize = 15 }) {
     }
 
     function render(firstTime = false) {
-      // Clear previous lines
+      const cols = Math.max(20, (process.stdout.columns || 80) - 2);
+
+      // Clear previous lines: move up to beginning of first line and erase to bottom
       if (!firstTime && renderedLineCount > 0) {
-        process.stdout.write(`\x1b[${renderedLineCount}A`);
+        const moveUp = renderedLineCount > 1 ? `\x1b[${renderedLineCount - 1}A` : '';
+        process.stdout.write(`\r${moveUp}\x1b[J`);
       }
 
       const outputLines = [];
@@ -64,18 +114,22 @@ export function checkboxList({ message, choices, pageSize = 15 }) {
       // Header
       outputLines.push(
         `${colors.green('?')} ${colors.bold(message)} ${colors.dim(
-          '(<space> toggle, <a> toggle all, <enter> confirm)'
+          '(<space> toggle, <a> all, <enter> confirm)'
         )}`
       );
+
+      // Clamp pageSize to terminal height so prompt never exceeds available window rows
+      const availableRows = process.stdout.rows ? Math.max(3, process.stdout.rows - 4) : 12;
+      const effectivePageSize = Math.min(pageSize, availableRows);
 
       // Adjust pagination window
       if (cursor < pageOffset) {
         pageOffset = cursor;
-      } else if (cursor >= pageOffset + pageSize) {
-        pageOffset = cursor - pageSize + 1;
+      } else if (cursor >= pageOffset + effectivePageSize) {
+        pageOffset = cursor - effectivePageSize + 1;
       }
 
-      const visibleItems = items.slice(pageOffset, pageOffset + pageSize);
+      const visibleItems = items.slice(pageOffset, pageOffset + effectivePageSize);
 
       visibleItems.forEach((item, index) => {
         const actualIndex = pageOffset + index;
@@ -99,20 +153,24 @@ export function checkboxList({ message, choices, pageSize = 15 }) {
       });
 
       // Pagination indicators
-      const remainingBelow = items.length - (pageOffset + pageSize);
+      const remainingBelow = items.length - (pageOffset + effectivePageSize);
       const remainingAbove = pageOffset;
-      if (items.length > pageSize) {
+      if (items.length > effectivePageSize) {
         const hints = [];
         if (remainingAbove > 0) hints.push(`▲ ${remainingAbove} above`);
         if (remainingBelow > 0) hints.push(`▼ ${remainingBelow} below`);
         outputLines.push(colors.dim(`  (${hints.join(' | ')})`));
       }
 
-      renderedLineCount = outputLines.length;
-      process.stdout.write(outputLines.map((line) => `\x1b[2K\r${line}`).join('\n') + '\n');
+      // Ensure every line fits within terminal columns to eliminate terminal auto-wrapping
+      const safeLines = outputLines.map((line) => truncateAnsi(line, cols));
+      renderedLineCount = safeLines.length;
+      process.stdout.write(safeLines.map((line) => `\x1b[2K\r${line}`).join('\n'));
     }
 
     function onKeypress(str, key) {
+      if (!key) return;
+
       if (key.ctrl && key.name === 'c') {
         cleanup();
         process.stdout.write('\n');
@@ -136,6 +194,7 @@ export function checkboxList({ message, choices, pageSize = 15 }) {
         render();
       } else if (key.name === 'return' || key.name === 'enter') {
         cleanup();
+        process.stdout.write('\n');
         const selected = items.filter((i) => i.checked).map((i) => i.value);
         resolve(selected);
       }
@@ -253,8 +312,12 @@ export function selectPrompt({ message, choices, pageSize = 12 }) {
     }
 
     function render(firstTime = false) {
+      const cols = Math.max(20, (process.stdout.columns || 80) - 2);
+
+      // Clear previous lines: move up to beginning of first line and erase to bottom
       if (!firstTime && renderedLineCount > 0) {
-        process.stdout.write(`\x1b[${renderedLineCount}A`);
+        const moveUp = renderedLineCount > 1 ? `\x1b[${renderedLineCount - 1}A` : '';
+        process.stdout.write(`\r${moveUp}\x1b[J`);
       }
 
       const outputLines = [];
@@ -262,13 +325,17 @@ export function selectPrompt({ message, choices, pageSize = 12 }) {
         `${colors.green('?')} ${colors.bold(message)} ${colors.dim('(Use arrow keys, <enter> to select)')}`
       );
 
+      // Clamp pageSize to terminal height so prompt never exceeds available window rows
+      const availableRows = process.stdout.rows ? Math.max(3, process.stdout.rows - 4) : 10;
+      const effectivePageSize = Math.min(pageSize, availableRows);
+
       if (cursor < pageOffset) {
         pageOffset = cursor;
-      } else if (cursor >= pageOffset + pageSize) {
-        pageOffset = cursor - pageSize + 1;
+      } else if (cursor >= pageOffset + effectivePageSize) {
+        pageOffset = cursor - effectivePageSize + 1;
       }
 
-      const visibleItems = items.slice(pageOffset, pageOffset + pageSize);
+      const visibleItems = items.slice(pageOffset, pageOffset + effectivePageSize);
 
       visibleItems.forEach((item, index) => {
         const actualIndex = pageOffset + index;
@@ -279,20 +346,24 @@ export function selectPrompt({ message, choices, pageSize = 12 }) {
         outputLines.push(`${pointer}${nameText}${descText}`);
       });
 
-      const remainingBelow = items.length - (pageOffset + pageSize);
+      const remainingBelow = items.length - (pageOffset + effectivePageSize);
       const remainingAbove = pageOffset;
-      if (items.length > pageSize) {
+      if (items.length > effectivePageSize) {
         const hints = [];
         if (remainingAbove > 0) hints.push(`▲ ${remainingAbove} above`);
         if (remainingBelow > 0) hints.push(`▼ ${remainingBelow} below`);
         outputLines.push(colors.dim(`  (${hints.join(' | ')})`));
       }
 
-      renderedLineCount = outputLines.length;
-      process.stdout.write(outputLines.map((line) => `\x1b[2K\r${line}`).join('\n') + '\n');
+      // Ensure every line fits within terminal columns to eliminate terminal auto-wrapping
+      const safeLines = outputLines.map((line) => truncateAnsi(line, cols));
+      renderedLineCount = safeLines.length;
+      process.stdout.write(safeLines.map((line) => `\x1b[2K\r${line}`).join('\n'));
     }
 
     function onKeypress(str, key) {
+      if (!key) return;
+
       if (key.ctrl && key.name === 'c') {
         cleanup();
         process.stdout.write('\n');
@@ -307,6 +378,7 @@ export function selectPrompt({ message, choices, pageSize = 12 }) {
         render();
       } else if (key.name === 'return' || key.name === 'enter') {
         cleanup();
+        process.stdout.write('\n');
         resolve(items[cursor].value);
       }
     }
